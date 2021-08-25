@@ -1,7 +1,6 @@
 package com.example.wifidirectexample
 
 import android.annotation.SuppressLint
-import android.app.Fragment
 import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
@@ -18,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.FileProvider
+import androidx.fragment.app.Fragment
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -34,10 +34,8 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
     private var device: WifiP2pDevice? = null
     private var info: WifiP2pInfo? = null
     var progressDialog: ProgressDialog? = null
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-    }
 
+    @SuppressLint("InflateParams")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -83,18 +81,19 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         return mContentView
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent) {
+    @SuppressLint("SetTextI18n")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
 
         // User has picked an image. Transfer it to group owner i.e peer using
         // FileTransferService.
-        val uri = data.data
+        val uri = data?.data
         val statusText = mContentView!!.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
         Log.d(
             MainActivity.TAG,
             "Intent----------- $uri"
         )
-        val serviceIntent = Intent(activity, FileTransferService::class.java)
+        val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
         serviceIntent.action = FileTransferService.ACTION_SEND_FILE
         serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
         serviceIntent.putExtra(
@@ -102,7 +101,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
             info!!.groupOwnerAddress.hostAddress
         )
         serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
-        activity.startService(serviceIntent)
+        requireActivity().startService(serviceIntent)
     }
 
     @SuppressLint("SetTextI18n")
@@ -128,7 +127,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         // server. The file server is single threaded, single connection server
         // socket.
         if (info.groupFormed && info.isGroupOwner) {
-            FileServerAsyncTask(activity, mContentView!!.findViewById(R.id.status_text))
+            FileServerAsyncTask(requireContext(), mContentView!!.findViewById(R.id.status_text))
                 .execute()
         } else if (info.groupFormed) {
             // The other device acts as the client. In this case, we enable the

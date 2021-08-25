@@ -1,6 +1,5 @@
 package com.example.wifidirectexample
 
-import android.app.ListFragment
 import android.app.ProgressDialog
 import android.content.Context
 import android.net.wifi.p2p.WifiP2pConfig
@@ -15,6 +14,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
+import androidx.fragment.app.ListFragment
 import java.util.*
 
 /**
@@ -30,11 +30,10 @@ class DeviceListFragment : ListFragment(), PeerListListener {
      * @return this device
      */
     var device: WifiP2pDevice? = null
-        private set
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        this.listAdapter = WiFiPeerListAdapter(activity, R.layout.row_devices, peers)
+        this.listAdapter = WiFiPeerListAdapter(requireContext(), R.layout.row_devices, peers)
     }
 
     override fun onCreateView(
@@ -50,7 +49,7 @@ class DeviceListFragment : ListFragment(), PeerListListener {
      * Initiate a connection with the peer.
      */
     override fun onListItemClick(l: ListView, v: View, position: Int, id: Long) {
-        val device = listAdapter.getItem(position) as WifiP2pDevice
+        val device = listAdapter?.getItem(position) as WifiP2pDevice
         (activity as DeviceActionListener).showDetails(device)
     }
 
@@ -69,7 +68,7 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             var v = convertView
             if (v == null) {
-                val vi = activity.getSystemService(
+                val vi = activity?.getSystemService(
                     Context.LAYOUT_INFLATER_SERVICE
                 ) as LayoutInflater
                 v = vi.inflate(R.layout.row_devices, null)

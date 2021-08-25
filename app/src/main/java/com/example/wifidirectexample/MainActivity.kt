@@ -2,7 +2,6 @@ package com.example.wifidirectexample
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +19,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
 /**
  * An activity that uses WiFi Direct APIs to discover and connect with available
@@ -28,13 +28,50 @@ import android.widget.Toast
  * The application should also register a BroadcastReceiver for notification of
  * WiFi state related events.
  */
-class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActionListener {
+class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.DeviceActionListener {
     private var manager: WifiP2pManager? = null
     private var isWifiP2pEnabled = false
     private var retryChannel = false
     private val intentFilter = IntentFilter()
     private var channel: WifiP2pManager.Channel? = null
     private var receiver: BroadcastReceiver? = null
+
+    public override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.main)
+        initIntentFilter()
+        checkIfWifiDirectSupported()
+        checkLocationPermission()
+    }
+
+    private fun initIntentFilter() {
+        intentFilter.apply {
+            addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
+            addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
+            addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
+            addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
+        }
+    }
+
+    private fun checkIfWifiDirectSupported() {
+        if (!isWifiDirectSupported()) {
+            finish()
+        }
+    }
+
+    private fun checkLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+            && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
+            )
+            // After this point you wait for callback in
+            // onRequestPermissionsResult(int, String[], int[]) overridden method
+        }
+    }
 
     /**
      * @param isWifiP2pEnabled the isWifiP2pEnabled to set
@@ -55,61 +92,61 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
         }
     }
 
-    private fun initP2p(): Boolean {
+    private fun isWifiDirectSupported(): Boolean {
         // Device capability definition check
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)) {
+        if (!hasFeatureWifiDirect()) {
             Log.e(TAG, "Wi-Fi Direct is not supported by this device.")
             return false
         }
 
         // Hardware capability check
-        val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        if (wifiManager == null) {
-            Log.e(TAG, "Cannot get Wi-Fi system service.")
+        if (!isP2PSupported()) {
+            Log.e(TAG, "Wi-Fi Direct is not supported by the hardware or Wi-Fi is off.")
             return false
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (!wifiManager.isP2pSupported) {
-                Log.e(TAG, "Wi-Fi Direct is not supported by the hardware or Wi-Fi is off.")
-                return false
-            }
-        }
-        manager = getSystemService(WIFI_P2P_SERVICE) as WifiP2pManager
-        if (manager == null) {
+
+        if (!isWifiDirectSystemServiceAvailable()) {
             Log.e(TAG, "Cannot get Wi-Fi Direct system service.")
             return false
         }
-        channel = manager?.initialize(this, mainLooper, null)
-        if (channel == null) {
+
+        if (!isInitiateWifiDirectSuccess()) {
             Log.e(TAG, "Cannot initialize Wi-Fi Direct.")
+            return false
+        }
+
+        return true
+    }
+
+    private fun hasFeatureWifiDirect(): Boolean {
+        return packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)
+    }
+
+    private fun isP2PSupported(): Boolean {
+        val wifiManager: WifiManager =
+            applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (!wifiManager.isP2pSupported) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun isWifiDirectSystemServiceAvailable(): Boolean {
+        manager = getSystemService(WIFI_P2P_SERVICE) as WifiP2pManager
+        if (manager == null) {
             return false
         }
         return true
     }
 
-    public override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.main)
-
-        // add necessary intent values to be matched.
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
-        if (!initP2p()) {
-            finish()
+    private fun isInitiateWifiDirectSuccess(): Boolean {
+        channel = manager?.initialize(this, mainLooper, null)
+        if (channel == null) {
+            return false
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
-            )
-            // After this point you wait for callback in
-            // onRequestPermissionsResult(int, String[], int[]) overridden method
-        }
+        return true
     }
 
     /**
@@ -131,17 +168,16 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
      * BroadcastReceiver receiving a state change event.
      */
     fun resetData() {
-        val fragmentList = fragmentManager
-            .findFragmentById(R.id.frag_list) as DeviceListFragment
-        val fragmentDetails = fragmentManager
-            .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
-        fragmentList?.clearPeers()
-        fragmentDetails?.resetViews()
+        val fragmentList =
+            supportFragmentManager.findFragmentById(R.id.frag_list) as DeviceListFragment
+        val fragmentDetails =
+            supportFragmentManager.findFragmentById(R.id.frag_detail) as DeviceDetailFragment
+        fragmentList.clearPeers()
+        fragmentDetails.resetViews()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val inflater = menuInflater
-        inflater.inflate(R.menu.action_items, menu)
+        menuInflater.inflate(R.menu.action_items, menu)
         return true
     }
 
@@ -166,28 +202,19 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
             }
             R.id.atn_direct_discover -> {
                 if (!isWifiP2pEnabled) {
-                    Toast.makeText(
-                        this, R.string.p2p_off_warning,
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    showToast(getString(R.string.p2p_off_warning))
                     return true
                 }
-                val fragment = fragmentManager
-                    .findFragmentById(R.id.frag_list) as DeviceListFragment
+                val fragment =
+                    supportFragmentManager.findFragmentById(R.id.frag_list) as DeviceListFragment
                 fragment.onInitiateDiscovery()
                 manager?.discoverPeers(channel, object : WifiP2pManager.ActionListener {
                     override fun onSuccess() {
-                        Toast.makeText(
-                            this@MainActivity, "Discovery Initiated",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showToast("Discovery Initiated")
                     }
 
                     override fun onFailure(reasonCode: Int) {
-                        Toast.makeText(
-                            this@MainActivity, "Discovery Failed : $reasonCode",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showToast("Discovery Failed: $reasonCode")
                     }
                 })
                 true
@@ -196,10 +223,19 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
         }
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(
+            this@MainActivity, message,
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     override fun showDetails(device: WifiP2pDevice?) {
-        val fragment = fragmentManager
-            .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
-        fragment.showDetails(device!!)
+        val fragment =
+            supportFragmentManager.findFragmentById(R.id.frag_detail) as DeviceDetailFragment
+        device?.let {
+            fragment.showDetails(it)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -210,17 +246,14 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
             }
 
             override fun onFailure(reason: Int) {
-                Toast.makeText(
-                    this@MainActivity, "Connect failed. Retry.",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showToast("Connect failed. Retry.")
             }
         })
     }
 
     override fun disconnect() {
-        val fragment = fragmentManager
-            .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
+        val fragment =
+            supportFragmentManager.findFragmentById(R.id.frag_detail) as DeviceDetailFragment
         fragment.resetViews()
         manager?.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onFailure(reasonCode: Int) {
@@ -239,16 +272,12 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
     override fun onChannelDisconnected() {
         // we will try once more
         if (manager != null && !retryChannel) {
-            Toast.makeText(this, "Channel lost. Trying again", Toast.LENGTH_LONG).show()
+            showToast("Channel lost. Trying again")
             resetData()
             retryChannel = true
             manager?.initialize(this, mainLooper, this)
         } else {
-            Toast.makeText(
-                this,
-                "Severe! Channel is probably lost premanently. Try Disable/Re-Enable P2P.",
-                Toast.LENGTH_LONG
-            ).show()
+            showToast("Severe! Channel is probably lost premanently. Try Disable/Re-Enable P2P.")
         }
     }
 
@@ -260,29 +289,20 @@ class MainActivity : Activity(), ChannelListener, DeviceListFragment.DeviceActio
          * request
          */
         if (manager != null) {
-            val fragment = fragmentManager
-                .findFragmentById(R.id.frag_list) as DeviceListFragment
-            if (fragment.device == null
-                || fragment.device?.status == WifiP2pDevice.CONNECTED
-            ) {
+            val fragment =
+                supportFragmentManager.findFragmentById(R.id.frag_list) as DeviceListFragment
+            if (fragment.device == null || fragment.device?.status == WifiP2pDevice.CONNECTED) {
                 disconnect()
             } else if (fragment.device?.status == WifiP2pDevice.AVAILABLE
                 || fragment.device?.status == WifiP2pDevice.INVITED
             ) {
                 manager?.cancelConnect(channel, object : WifiP2pManager.ActionListener {
                     override fun onSuccess() {
-                        Toast.makeText(
-                            this@MainActivity, "Aborting connection",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showToast("Aborting connection")
                     }
 
                     override fun onFailure(reasonCode: Int) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Connect abort request failed. Reason Code: $reasonCode",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showToast("Connect abort request failed. Reason Code: $reasonCode")
                     }
                 })
             }
