@@ -21,13 +21,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
-/**
- * An activity that uses WiFi Direct APIs to discover and connect with available
- * devices. WiFi Direct APIs are asynchronous and rely on callback mechanism
- * using interfaces to notify the application of operation success or failure.
- * The application should also register a BroadcastReceiver for notification of
- * WiFi state related events.
- */
 class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.DeviceActionListener {
     private var manager: WifiP2pManager? = null
     private var isWifiP2pEnabled = false
@@ -68,14 +61,9 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
             )
-            // After this point you wait for callback in
-            // onRequestPermissionsResult(int, String[], int[]) overridden method
         }
     }
 
-    /**
-     * @param isWifiP2pEnabled the isWifiP2pEnabled to set
-     */
     fun setIsWifiP2pEnabled(isWifiP2pEnabled: Boolean) {
         this.isWifiP2pEnabled = isWifiP2pEnabled
     }
@@ -149,9 +137,6 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
         return true
     }
 
-    /**
-     * register the BroadcastReceiver with the intent values to be matched
-     */
     public override fun onResume() {
         super.onResume()
         receiver = WifiDirectBroadcasterReceiver(manager, channel, this)
@@ -163,10 +148,6 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
         unregisterReceiver(receiver)
     }
 
-    /**
-     * Remove all peers and clear all fields. This is called on
-     * BroadcastReceiver receiving a state change event.
-     */
     fun resetData() {
         val fragmentList =
             supportFragmentManager.findFragmentById(R.id.frag_list) as DeviceListFragment
@@ -181,19 +162,11 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
         return true
     }
 
-    /*
-     * (non-Javadoc)
-     * @see android.app.Activity#onOptionsItemSelected(android.view.MenuItem)
-     */
     @SuppressLint("MissingPermission")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.atn_direct_enable -> {
                 if (manager != null && channel != null) {
-
-                    // Since this is the system wireless settings activity, it's
-                    // not going to send us a result. We will be notified by
-                    // WiFiDeviceBroadcastReceiver instead.
                     startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
                 } else {
                     Log.e(TAG, "channel or manager is null")
@@ -270,7 +243,6 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
     }
 
     override fun onChannelDisconnected() {
-        // we will try once more
         if (manager != null && !retryChannel) {
             showToast("Channel lost. Trying again")
             resetData()
@@ -282,12 +254,6 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
     }
 
     override fun cancelDisconnect() {
-
-        /*
-         * A cancel abort request by user. Disconnect i.e. removeGroup if
-         * already connected. Else, request WifiP2pManager to abort the ongoing
-         * request
-         */
         if (manager != null) {
             val fragment =
                 supportFragmentManager.findFragmentById(R.id.frag_list) as DeviceListFragment

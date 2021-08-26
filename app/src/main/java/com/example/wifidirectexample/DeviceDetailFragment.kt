@@ -25,10 +25,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
 
-/**
- * A fragment that manages a particular peer and allows interaction with device
- * i.e. setting up network connection and transferring data.
- */
 class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
     private var mContentView: View? = null
     private var device: WifiP2pDevice? = null
@@ -41,26 +37,21 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
         mContentView = inflater.inflate(R.layout.device_detail, null)
         mContentView?.findViewById<View>(R.id.btn_connect)?.setOnClickListener {
             val config = WifiP2pConfig()
-            config.deviceAddress = device!!.deviceAddress
+            config.deviceAddress = device?.deviceAddress
             config.wps.setup = WpsInfo.PBC
-            if (progressDialog != null && progressDialog!!.isShowing) {
-                progressDialog!!.dismiss()
+            if (progressDialog != null && progressDialog?.isShowing == true) {
+                progressDialog?.dismiss()
             }
             progressDialog = ProgressDialog.show(
                 activity,
                 "Press back to cancel",
-                "Connecting to :" + device!!.deviceAddress,
+                "Connecting to :" + device?.deviceAddress,
                 true,
-                true //                        new DialogInterface.OnCancelListener() {
-                //
-                //                            @Override
-                //                            public void onCancel(DialogInterface dialog) {
-                //                                ((DeviceActionListener) getActivity()).cancelDisconnect();
-                //                            }
-                //                        }
+                true
             )
             (activity as DeviceListFragment.DeviceActionListener).connect(
                 config
@@ -83,11 +74,8 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
 
     @SuppressLint("SetTextI18n")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-
-        // User has picked an image. Transfer it to group owner i.e peer using
-        // FileTransferService.
         val uri = data?.data
-        val statusText = mContentView!!.findViewById<View>(R.id.status_text) as TextView
+        val statusText = mContentView?.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
         Log.d(
             MainActivity.TAG,
@@ -98,7 +86,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
         serviceIntent.putExtra(
             FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
-            info!!.groupOwnerAddress.hostAddress
+            info?.groupOwnerAddress?.hostAddress
         )
         serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
         requireActivity().startService(serviceIntent)
@@ -106,78 +94,68 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
 
     @SuppressLint("SetTextI18n")
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
-        if (progressDialog != null && progressDialog!!.isShowing) {
-            progressDialog!!.dismiss()
+        if (progressDialog != null && progressDialog?.isShowing == true) {
+            progressDialog?.dismiss()
         }
         this.info = info
-        this.view!!.visibility = View.VISIBLE
+        this.view?.visibility = View.VISIBLE
 
-        // The owner IP is now known.
-        var view = mContentView!!.findViewById<View>(R.id.group_owner) as TextView
-        view.text = resources.getString(R.string.group_owner_text)
-            .toString() + (if ((info.isGroupOwner)) resources.getString(R.string.yes) else resources.getString(
-            R.string.no
-        ))
+        var view = mContentView?.findViewById<View>(R.id.group_owner) as TextView
+        view.text =
+            resources.getString(R.string.group_owner_text) + (if ((info.isGroupOwner)) resources.getString(
+                R.string.yes
+            ) else resources.getString(
+                R.string.no
+            ))
 
-        // InetAddress from WifiP2pInfo struct.
-        view = mContentView!!.findViewById<View>(R.id.device_info) as TextView
+        view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
-        // After the group negotiation, we assign the group owner as the file
-        // server. The file server is single threaded, single connection server
-        // socket.
         if (info.groupFormed && info.isGroupOwner) {
-            FileServerAsyncTask(requireContext(), mContentView!!.findViewById(R.id.status_text))
-                .execute()
+            mContentView?.let {
+                FileServerAsyncTask(requireContext(), it.findViewById(R.id.status_text))
+                    .execute()
+            }
         } else if (info.groupFormed) {
-            // The other device acts as the client. In this case, we enable the
-            // get file button.
-            mContentView!!.findViewById<View>(R.id.btn_start_client).visibility =
-                View.VISIBLE
-            (mContentView!!.findViewById<View>(R.id.status_text) as TextView).text =
-                resources
-                    .getString(R.string.client_text)
+            mContentView?.let {
+                it.findViewById<View>(R.id.btn_start_client).visibility =
+                    View.VISIBLE
+                (it.findViewById<View>(R.id.status_text) as TextView).text =
+                    resources
+                        .getString(R.string.client_text)
+            }
         }
-
-        // hide the connect button
-        mContentView!!.findViewById<View>(R.id.btn_connect).visibility = View.GONE
+        mContentView?.let {
+            it.findViewById<View>(R.id.btn_connect).visibility = View.GONE
+        }
     }
 
-    /**
-     * Updates the UI with device data
-     *
-     * @param device the device to be displayed
-     */
     fun showDetails(device: WifiP2pDevice) {
         this.device = device
-        this.view!!.visibility = View.VISIBLE
-        var view = mContentView!!.findViewById<View>(R.id.device_address) as TextView
+        this.view?.visibility = View.VISIBLE
+        var view = mContentView?.findViewById<View>(R.id.device_address) as TextView
         view.text = device.deviceAddress
-        view = mContentView!!.findViewById<View>(R.id.device_info) as TextView
+        view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = device.toString()
     }
 
-    /**
-     * Clears the UI fields after a disconnect or direct mode disable operation.
-     */
     fun resetViews() {
-        mContentView!!.findViewById<View>(R.id.btn_connect).visibility = View.VISIBLE
-        var view = mContentView!!.findViewById<View>(R.id.device_address) as TextView
+        mContentView?.findViewById<View>(R.id.btn_connect)?.visibility = View.VISIBLE
+        var view = mContentView?.findViewById<View>(R.id.device_address) as TextView
         view.setText(R.string.empty)
-        view = mContentView!!.findViewById<View>(R.id.device_info) as TextView
+        view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.setText(R.string.empty)
-        view = mContentView!!.findViewById<View>(R.id.group_owner) as TextView
+        view = mContentView?.findViewById<View>(R.id.group_owner) as TextView
         view.setText(R.string.empty)
-        view = mContentView!!.findViewById<View>(R.id.status_text) as TextView
+        view = mContentView?.findViewById<View>(R.id.status_text) as TextView
         view.setText(R.string.empty)
-        mContentView!!.findViewById<View>(R.id.btn_start_client).visibility = View.GONE
+        mContentView?.let {
+            it.findViewById<View>(R.id.btn_start_client).visibility = View.GONE
+        }
         view.visibility = View.GONE
     }
 
-    /**
-     * A simple server socket that accepts connection and writes some data on
-     * the stream.
-     */
+    @SuppressLint("StaticFieldLeak")
     class FileServerAsyncTask(private val context: Context, statusText: View) :
         AsyncTask<Void?, Void?, String?>() {
         @SuppressLint("StaticFieldLeak")
@@ -213,16 +191,12 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
             } catch (e: IOException) {
                 Log.e(
                     MainActivity.TAG,
-                    (e.message)!!
+                    e.message.toString()
                 )
                 return null
             }
         }
 
-        /*
-         * (non-Javadoc)
-         * @see android.os.AsyncTask#onPostExecute(java.lang.Object)
-         */
         override fun onPostExecute(result: String?) {
             if (result != null) {
                 statusText.text = "File copied - $result"
@@ -240,10 +214,6 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
             }
         }
 
-        /*
-         * (non-Javadoc)
-         * @see android.os.AsyncTask#onPreExecute()
-         */
         override fun onPreExecute() {
             statusText.text = "Opening a server socket"
         }
@@ -251,7 +221,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
     }
 
     companion object {
-        protected val CHOOSE_FILE_RESULT_CODE = 20
+        private const val CHOOSE_FILE_RESULT_CODE = 20
         fun copyFile(inputStream: InputStream, out: OutputStream): Boolean {
             val buf = ByteArray(1024)
             var len: Int

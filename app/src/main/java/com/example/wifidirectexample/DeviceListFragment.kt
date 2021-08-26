@@ -1,5 +1,6 @@
 package com.example.wifidirectexample
 
+import android.annotation.SuppressLint
 import android.app.ProgressDialog
 import android.content.Context
 import android.net.wifi.p2p.WifiP2pConfig
@@ -17,18 +18,11 @@ import android.widget.TextView
 import androidx.fragment.app.ListFragment
 import java.util.*
 
-/**
- * A ListFragment that displays available peers on discovery and requests the
- * parent activity to handle user interaction events
- */
 class DeviceListFragment : ListFragment(), PeerListListener {
     private val peers: MutableList<WifiP2pDevice> = ArrayList()
     var progressDialog: ProgressDialog? = null
     var mContentView: View? = null
 
-    /**
-     * @return this device
-     */
     var device: WifiP2pDevice? = null
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -36,6 +30,7 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         this.listAdapter = WiFiPeerListAdapter(requireContext(), R.layout.row_devices, peers)
     }
 
+    @SuppressLint("InflateParams")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -45,23 +40,13 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         return mContentView
     }
 
-    /**
-     * Initiate a connection with the peer.
-     */
     override fun onListItemClick(l: ListView, v: View, position: Int, id: Long) {
         val device = listAdapter?.getItem(position) as WifiP2pDevice
         (activity as DeviceActionListener).showDetails(device)
     }
 
-    /**
-     * Array adapter for ListFragment that maintains WifiP2pDevice list.
-     */
-    private inner class WiFiPeerListAdapter
-    /**
-     * @param context
-     * @param textViewResourceId
-     * @param objects
-     */(
+
+    private inner class WiFiPeerListAdapter(
         context: Context, textViewResourceId: Int,
         private val items: List<WifiP2pDevice>
     ) : ArrayAdapter<WifiP2pDevice?>(context, textViewResourceId, items) {
@@ -82,11 +67,6 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         }
     }
 
-    /**
-     * Update UI for this device.
-     *
-     * @param device WifiP2pDevice object
-     */
     fun updateThisDevice(device: WifiP2pDevice) {
         this.device = device
         var view = mContentView?.findViewById<View>(R.id.my_name) as TextView
@@ -99,12 +79,14 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         if (progressDialog != null && progressDialog!!.isShowing) {
             progressDialog?.dismiss()
         }
-        peers.clear()
-        peers.addAll(peerList.deviceList)
-        (listAdapter as WiFiPeerListAdapter).notifyDataSetChanged()
-        if (peers.size == 0) {
-            Log.d(MainActivity.TAG, "No devices found")
-            return
+        peers.apply {
+            clear()
+            addAll(peerList.deviceList)
+            (listAdapter as WiFiPeerListAdapter).notifyDataSetChanged()
+            if (size == 0) {
+                Log.d(MainActivity.TAG, "No devices found")
+                return
+            }
         }
     }
 
@@ -113,9 +95,6 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         (listAdapter as WiFiPeerListAdapter).notifyDataSetChanged()
     }
 
-    /**
-     *
-     */
     fun onInitiateDiscovery() {
         if (progressDialog != null && progressDialog!!.isShowing) {
             progressDialog?.dismiss()
@@ -126,10 +105,6 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         ) { }
     }
 
-    /**
-     * An interface-callback for the activity to listen to fragment interaction
-     * events.
-     */
     interface DeviceActionListener {
         fun showDetails(device: WifiP2pDevice?)
         fun cancelDisconnect()

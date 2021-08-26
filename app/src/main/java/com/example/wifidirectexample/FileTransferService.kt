@@ -10,51 +10,42 @@ import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 
-/**
- * A service that process each file transfer request i.e Intent by opening a
- * socket connection with the WiFi Direct Group Owner and writing the file
- */
 class FileTransferService : IntentService {
     constructor(name: String?) : super(name) {}
     constructor() : super("FileTransferService") {}
 
-    /*
-     * (non-Javadoc)
-     * @see android.app.IntentService#onHandleIntent(android.content.Intent)
-     */
     override fun onHandleIntent(intent: Intent?) {
         val context = applicationContext
-        if (intent!!.action == ACTION_SEND_FILE) {
-            val fileUri = intent.extras!!.getString(EXTRAS_FILE_PATH)
-            val host = intent.extras!!.getString(EXTRAS_GROUP_OWNER_ADDRESS)
+        if (intent?.action == ACTION_SEND_FILE) {
+            val fileUri = intent.extras?.getString(EXTRAS_FILE_PATH)
+            val host = intent.extras?.getString(EXTRAS_GROUP_OWNER_ADDRESS)
             val socket = Socket()
-            val port = intent.extras!!.getInt(EXTRAS_GROUP_OWNER_PORT)
+            val port = intent.extras?.getInt(EXTRAS_GROUP_OWNER_PORT)
             try {
                 Log.d(MainActivity.TAG, "Opening client socket - ")
                 socket.bind(null)
-                socket.connect(InetSocketAddress(host, port), SOCKET_TIMEOUT)
+                socket.connect(InetSocketAddress(host, port ?: 0), SOCKET_TIMEOUT)
                 Log.d(MainActivity.TAG, "Client socket - " + socket.isConnected)
                 val stream = socket.getOutputStream()
                 val cr = context.contentResolver
-                var `is`: InputStream? = null
+                var inputStream: InputStream? = null
                 try {
-                    `is` = cr.openInputStream(Uri.parse(fileUri))
+                    inputStream = cr.openInputStream(Uri.parse(fileUri))
                 } catch (e: FileNotFoundException) {
                     Log.d(MainActivity.TAG, e.toString())
                 }
-                DeviceDetailFragment.copyFile(`is`!!, stream)
+                inputStream?.let {
+                    DeviceDetailFragment.copyFile(it, stream)
+                }
                 Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
-                Log.e(MainActivity.TAG, e.message!!)
+                Log.e(MainActivity.TAG, e.message.toString())
             } finally {
-                if (socket != null) {
-                    if (socket.isConnected) {
-                        try {
-                            socket.close()
-                        } catch (e: IOException) {
-                            // Give up
-                            e.printStackTrace()
-                        }
+                if (socket.isConnected) {
+                    try {
+                        socket.close()
+                    } catch (e: IOException) {
+                        Log.e(MainActivity.TAG, e.message.toString())
                     }
                 }
             }
