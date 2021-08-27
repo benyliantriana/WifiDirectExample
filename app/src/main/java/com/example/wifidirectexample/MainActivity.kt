@@ -53,13 +53,28 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
     }
 
     private fun checkLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        requestPermissions(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
+        )
+    }
+
+    private fun checkStoragePermission() {
+        requestPermissions(
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ),
+            PERMISSION_REQUEST_CODE_STORAGE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
+                arrayOf(
+                    Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                    Manifest.permission.MANAGE_DOCUMENTS
+                ),
+                PERMISSION_REQUEST_CODE_STORAGE
             )
         }
     }
@@ -76,6 +91,8 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
             PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION -> if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                 Log.e(TAG, "Fine location permission is not granted!")
                 finish()
+            } else {
+                checkStoragePermission()
             }
         }
     }
@@ -278,5 +295,6 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
     companion object {
         const val TAG = "wifidirectdemo"
         private const val PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION = 1001
+        private const val PERMISSION_REQUEST_CODE_STORAGE = 1002
     }
 }

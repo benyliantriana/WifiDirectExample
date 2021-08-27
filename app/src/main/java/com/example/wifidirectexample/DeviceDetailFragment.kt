@@ -11,6 +11,7 @@ import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
 import android.os.AsyncTask
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -90,6 +91,10 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         )
         serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
         requireActivity().startService(serviceIntent)
+        Log.d(
+            MainActivity.TAG,
+            "send ??   $uri"
+        )
     }
 
     @SuppressLint("SetTextI18n")
@@ -173,7 +178,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                     "Server: connection done"
                 )
                 val f = File(
-                    context.getExternalFilesDir("received"),
+                    context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
                     "wifip2pshared-" + System.currentTimeMillis()
                             + ".jpg"
                 )
@@ -203,7 +208,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                 val recvFile = File(result)
                 val fileUri = FileProvider.getUriForFile(
                     context,
-                    "com.example.android.wifidirect.fileprovider",
+                    "com.example.wifidirectexample.fileprovider",
                     recvFile
                 )
                 val intent = Intent()
