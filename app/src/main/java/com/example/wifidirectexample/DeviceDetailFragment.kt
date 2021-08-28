@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
+import android.content.Intent.*
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -17,13 +18,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.*
 import java.net.ServerSocket
 
 class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
@@ -63,12 +61,19 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         mContentView?.findViewById<View>(R.id.btn_start_client)
             ?.setOnClickListener { // Allow user to pick an image from Gallery or other
                 // registered apps
-                val intent = Intent(Intent.ACTION_GET_CONTENT)
-                intent.type = "image/*"
-                startActivityForResult(
-                    intent,
+                val intent = Intent()
+                intent.apply {
+                    type = "application/zip"
+                    action = ACTION_GET_CONTENT
+                    putExtra(EXTRA_LOCAL_ONLY, true)
+                    addCategory(CATEGORY_OPENABLE)
+                    flags = FLAG_GRANT_READ_URI_PERMISSION or FLAG_GRANT_WRITE_URI_PERMISSION
+                }
+                requireActivity().startActivityForResult(
+                    createChooser(intent, "Select File Zip"),
                     CHOOSE_FILE_RESULT_CODE
                 )
+
             }
         return mContentView
     }
@@ -211,11 +216,12 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                     "com.example.wifidirectexample.fileprovider",
                     recvFile
                 )
-                val intent = Intent()
-                intent.action = Intent.ACTION_VIEW
-                intent.setDataAndType(fileUri, "image/*")
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.startActivity(intent)
+                Toast.makeText(context, "file saved on $fileUri", Toast.LENGTH_SHORT).show()
+//                val intent = Intent()
+//                intent.action = Intent.ACTION_VIEW
+//                intent.setDataAndType(fileUri, "image/*")
+//                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+//                context.startActivity(intent)
             }
         }
 
