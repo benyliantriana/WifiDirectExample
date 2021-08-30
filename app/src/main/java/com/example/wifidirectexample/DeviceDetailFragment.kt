@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
-import android.content.Intent.*
+import android.content.Intent.createChooser
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -21,7 +21,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import java.io.*
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.ServerSocket
 
 class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
@@ -64,16 +68,12 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                 val intent = Intent()
                 intent.apply {
                     type = "application/zip"
-                    action = ACTION_GET_CONTENT
-                    putExtra(EXTRA_LOCAL_ONLY, true)
-                    addCategory(CATEGORY_OPENABLE)
-                    flags = FLAG_GRANT_READ_URI_PERMISSION or FLAG_GRANT_WRITE_URI_PERMISSION
+                    action = Intent.ACTION_GET_CONTENT
                 }
-                requireActivity().startActivityForResult(
+                startActivityForResult(
                     createChooser(intent, "Select File Zip"),
                     CHOOSE_FILE_RESULT_CODE
                 )
-
             }
         return mContentView
     }
@@ -185,7 +185,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                 val f = File(
                     context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
                     "wifip2pshared-" + System.currentTimeMillis()
-                            + ".jpg"
+                            + ".zip"
                 )
                 val dirs = File(f.parent)
                 if (!dirs.exists()) dirs.mkdirs()
@@ -216,12 +216,17 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                     "com.example.wifidirectexample.fileprovider",
                     recvFile
                 )
-                Toast.makeText(context, "file saved on $fileUri", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "File copied to $fileUri", Toast.LENGTH_SHORT).show()
 //                val intent = Intent()
 //                intent.action = Intent.ACTION_VIEW
 //                intent.setDataAndType(fileUri, "image/*")
 //                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
 //                context.startActivity(intent)
+            } else {
+                Log.e(
+                    MainActivity.TAG,
+                    "file not copied"
+                )
             }
         }
 
