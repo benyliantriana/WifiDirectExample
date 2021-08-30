@@ -130,10 +130,8 @@ class MainActivity : AppCompatActivity(), ChannelListener, DeviceListFragment.De
     private fun isP2PSupported(): Boolean {
         val wifiManager: WifiManager =
             applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (!wifiManager.isP2pSupported) {
-                return false
-            }
+        if (!wifiManager.isP2pSupported) {
+            return false
         }
         return true
     }

@@ -5,6 +5,7 @@ import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.createChooser
+import android.net.Uri
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -19,16 +20,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.*
 import java.net.ServerSocket
 
-class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
+class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var mContentView: View? = null
     private var device: WifiP2pDevice? = null
     private var info: WifiP2pInfo? = null
@@ -40,42 +36,52 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
         mContentView = inflater.inflate(R.layout.device_detail, null)
-        mContentView?.findViewById<View>(R.id.btn_connect)?.setOnClickListener {
-            val config = WifiP2pConfig()
-            config.deviceAddress = device?.deviceAddress
-            config.wps.setup = WpsInfo.PBC
-            if (progressDialog != null && progressDialog?.isShowing == true) {
-                progressDialog?.dismiss()
+        mContentView?.apply {
+            findViewById<View>(R.id.btn_connect)?.setOnClickListener {
+                pairingDevice()
             }
-            progressDialog = ProgressDialog.show(
-                activity,
-                "Press back to cancel",
-                "Connecting to :" + device?.deviceAddress,
-                true,
-                true
-            )
-            (activity as DeviceListFragment.DeviceActionListener).connect(
-                config
-            )
+
+            findViewById<View>(R.id.btn_disconnect)?.setOnClickListener {
+                (activity as DeviceListFragment.DeviceActionListener).disconnect()
+            }
+
+            findViewById<View>(R.id.btn_start_client)?.setOnClickListener {
+                openFileZip()
+            }
         }
-        mContentView?.findViewById<View>(R.id.btn_disconnect)
-            ?.setOnClickListener { (activity as DeviceListFragment.DeviceActionListener).disconnect() }
-        mContentView?.findViewById<View>(R.id.btn_start_client)
-            ?.setOnClickListener { // Allow user to pick an image from Gallery or other
-                // registered apps
-                val intent = Intent()
-                intent.apply {
-                    type = "application/zip"
-                    action = Intent.ACTION_GET_CONTENT
-                }
-                startActivityForResult(
-                    createChooser(intent, "Select File Zip"),
-                    CHOOSE_FILE_RESULT_CODE
-                )
-            }
         return mContentView
+    }
+
+    private fun pairingDevice() {
+        val config = WifiP2pConfig()
+        config.deviceAddress = device?.deviceAddress
+        config.wps.setup = WpsInfo.PBC
+        if (progressDialog != null && progressDialog?.isShowing == true) {
+            progressDialog?.dismiss()
+        }
+        progressDialog = ProgressDialog.show(
+            activity,
+            "Press back to cancel",
+            "Connecting to :" + device?.deviceAddress,
+            true,
+            true
+        )
+        (activity as DeviceListFragment.DeviceActionListener).connect(
+            config
+        )
+    }
+
+    private fun openFileZip() {
+        val intent = Intent()
+        intent.apply {
+            type = "application/zip"
+            action = Intent.ACTION_GET_CONTENT
+        }
+        startActivityForResult(
+            createChooser(intent, "Select File Zip"),
+            CHOOSE_FILE_RESULT_CODE
+        )
     }
 
     @SuppressLint("SetTextI18n")
@@ -83,23 +89,22 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
         val uri = data?.data
         val statusText = mContentView?.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
-        Log.d(
-            MainActivity.TAG,
-            "Intent----------- $uri"
-        )
+
+        handlingUriFile(uri)
+    }
+
+    private fun handlingUriFile(uri: Uri?) {
         val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
-        serviceIntent.action = FileTransferService.ACTION_SEND_FILE
-        serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
-        serviceIntent.putExtra(
-            FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
-            info?.groupOwnerAddress?.hostAddress
-        )
-        serviceIntent.putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
+        serviceIntent.apply {
+            action = FileTransferService.ACTION_SEND_FILE
+            putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
+            putExtra(
+                FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
+                info?.groupOwnerAddress?.hostAddress
+            )
+            putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
+        }
         requireActivity().startService(serviceIntent)
-        Log.d(
-            MainActivity.TAG,
-            "send ??   $uri"
-        )
     }
 
     @SuppressLint("SetTextI18n")
