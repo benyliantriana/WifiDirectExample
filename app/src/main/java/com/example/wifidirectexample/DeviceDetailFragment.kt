@@ -126,16 +126,13 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                 FileServerAsyncTask(requireContext(), it.findViewById(R.id.status_text))
                     .execute()
             }
-        } else if (info.groupFormed) {
-            mContentView?.let {
-                it.findViewById<View>(R.id.btn_start_client).visibility =
-                    View.VISIBLE
-                (it.findViewById<View>(R.id.status_text) as TextView).text =
-                    resources
-                        .getString(R.string.client_text)
-            }
         }
         mContentView?.let {
+            it.findViewById<View>(R.id.btn_start_client).visibility =
+                View.VISIBLE
+            (it.findViewById<View>(R.id.status_text) as TextView).text =
+                resources
+                    .getString(R.string.client_text)
             it.findViewById<View>(R.id.btn_connect).visibility = View.GONE
         }
     }
@@ -184,7 +181,7 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
                 )
                 val f = File(
                     context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-                    "wifip2pshared-" + System.currentTimeMillis()
+                    "file-" + System.currentTimeMillis()
                             + ".zip"
                 )
                 val dirs = File(f.parent)
@@ -207,21 +204,11 @@ class DeviceDetailFragment() : Fragment(), ConnectionInfoListener {
             }
         }
 
+        @SuppressLint("SetTextI18n")
         override fun onPostExecute(result: String?) {
             if (result != null) {
                 statusText.text = "File copied - $result"
-                val recvFile = File(result)
-                val fileUri = FileProvider.getUriForFile(
-                    context,
-                    "com.example.wifidirectexample.fileprovider",
-                    recvFile
-                )
-                Toast.makeText(context, "File copied to $fileUri", Toast.LENGTH_SHORT).show()
-//                val intent = Intent()
-//                intent.action = Intent.ACTION_VIEW
-//                intent.setDataAndType(fileUri, "image/*")
-//                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-//                context.startActivity(intent)
+                Toast.makeText(context, "File copied to $result", Toast.LENGTH_SHORT).show()
             } else {
                 Log.e(
                     MainActivity.TAG,
