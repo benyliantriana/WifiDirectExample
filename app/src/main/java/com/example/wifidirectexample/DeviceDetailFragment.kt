@@ -1,8 +1,8 @@
 package com.example.wifidirectexample
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.ProgressDialog
-import android.content.Context
 import android.content.Intent
 import android.content.Intent.createChooser
 import android.net.Uri
@@ -11,7 +11,6 @@ import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
-import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -22,7 +21,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import java.io.*
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
+import java.net.Socket
 
 class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var mContentView: View? = null
@@ -127,10 +129,11 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
         if (info.groupFormed && info.isGroupOwner) {
-            mContentView?.let {
-                FileServerAsyncTask(requireContext(), it.findViewById(R.id.status_text))
-                    .execute()
-            }
+            val server = ServerClass(requireActivity())
+            server.start()
+        } else if (info.groupFormed && !info.isGroupOwner) {
+//            val client = ClientClass(requireActivity(), info.groupOwnerAddress)
+//            client.start()
         }
         mContentView?.let {
             it.findViewById<View>(R.id.btn_start_client).visibility =
@@ -167,25 +170,20 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view.visibility = View.GONE
     }
 
-    @SuppressLint("StaticFieldLeak")
-    class FileServerAsyncTask(private val context: Context, statusText: View) :
-        AsyncTask<Void?, Void?, String?>() {
-        @SuppressLint("StaticFieldLeak")
-        private val statusText: TextView = statusText as TextView
-        override fun doInBackground(vararg params: Void?): String? {
+    class ServerClass(
+        private val activity: Activity
+    ) : Thread() {
+        lateinit var serverSocket: ServerSocket
+
+        override fun run() {
             try {
-                val serverSocket = ServerSocket(8988)
-                Log.d(
-                    MainActivity.TAG,
-                    "Server: Socket opened"
-                )
-                val client = serverSocket.accept()
-                Log.d(
-                    MainActivity.TAG,
-                    "Server: connection done"
-                )
+                serverSocket = ServerSocket(8988)
+                val socket = serverSocket.accept()
+
+                val inputstream = socket.getInputStream()
+
                 val f = File(
-                    context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+                    activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
                     "file-" + System.currentTimeMillis()
                             + ".zip"
                 )
@@ -196,36 +194,41 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     MainActivity.TAG,
                     "server: copying files $f"
                 )
-                val inputstream = client.getInputStream()
+
                 copyFile(inputstream, FileOutputStream(f))
+                Log.d(MainActivity.TAG, "file saved $f")
+                activity.runOnUiThread {
+                    run {
+                        Toast.makeText(activity, "File copied to $f", Toast.LENGTH_SHORT).show()
+                    }
+                }
                 serverSocket.close()
-                return f.absolutePath
-            } catch (e: IOException) {
-                Log.e(
-                    MainActivity.TAG,
-                    e.message.toString()
-                )
-                return null
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
+    }
 
-        @SuppressLint("SetTextI18n")
-        override fun onPostExecute(result: String?) {
-            if (result != null) {
-                statusText.text = "File copied - $result"
-                Toast.makeText(context, "File copied to $result", Toast.LENGTH_SHORT).show()
-            } else {
-                Log.e(
-                    MainActivity.TAG,
-                    "file not copied"
-                )
+    class ClientClass(
+        private val activity: Activity,
+        private val hostAddress: InetAddress
+    ) : Thread() {
+        lateinit var socket: Socket
+        lateinit var hostAdd: String
+
+        override fun run() {
+            hostAdd = hostAddress.hostAddress
+            socket = Socket()
+
+            try {
+                socket.bind(null)
+                socket.connect(InetSocketAddress(hostAdd, 8988), 500)
+                Log.d(MainActivity.TAG, "client  socket")
+            } catch (e: Exception) {
+                Log.d(MainActivity.TAG, "exxx: " + e.message.toString())
+                e.printStackTrace()
             }
         }
-
-        override fun onPreExecute() {
-            statusText.text = "Opening a server socket"
-        }
-
     }
 
     companion object {
