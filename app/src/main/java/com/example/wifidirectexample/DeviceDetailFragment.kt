@@ -105,6 +105,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 info?.groupOwnerAddress?.hostAddress
             )
             putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
+            putExtra(FileTransferService.EXTRAS_IS_GROUP_OWNER, info?.isGroupOwner)
         }
         requireActivity().startService(serviceIntent)
     }
@@ -177,7 +178,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
         override fun run() {
             try {
-                serverSocket = ServerSocket(8988)
+                serverSocket = ServerSocket()
+                serverSocket.reuseAddress = true
+                serverSocket.bind(InetSocketAddress(8988))
                 val socket = serverSocket.accept()
 
                 val inputstream = socket.getInputStream()
@@ -224,6 +227,30 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 socket.bind(null)
                 socket.connect(InetSocketAddress(hostAdd, 8988), 500)
                 Log.d(MainActivity.TAG, "client  socket")
+
+                val inputstream = socket.getInputStream()
+
+                val f = File(
+                    activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+                    "file-" + System.currentTimeMillis()
+                            + ".zip"
+                )
+                val dirs = File(f.parent)
+                if (!dirs.exists()) dirs.mkdirs()
+                f.createNewFile()
+                Log.d(
+                    MainActivity.TAG,
+                    "server: copying files $f"
+                )
+
+                copyFile(inputstream, FileOutputStream(f))
+                Log.d(MainActivity.TAG, "file saved $f")
+                activity.runOnUiThread {
+                    run {
+                        Toast.makeText(activity, "File copied to $f", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                socket.close()
             } catch (e: Exception) {
                 Log.d(MainActivity.TAG, "exxx: " + e.message.toString())
                 e.printStackTrace()
