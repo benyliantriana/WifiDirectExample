@@ -25,6 +25,7 @@ class FileTransferService : IntentService {
             try {
                 if (isHost == true) {
                     val serverSocket = ServerSocket(port ?: 0)
+                    serverSocket.reuseAddress = true
                     val clientSocket = serverSocket.accept()
 
                     val inputstream = clientSocket.getInputStream()
@@ -44,6 +45,7 @@ class FileTransferService : IntentService {
 
                     DeviceDetailFragment.copyFile(inputstream, FileOutputStream(f))
                     Log.d(MainActivity.TAG, "file saved $f")
+                    serverSocket.close()
                 } else {
                     Log.d(MainActivity.TAG, "Opening client socket - ")
                     socket.bind(null)
