@@ -26,7 +26,7 @@ class FileTransferService : IntentService {
             try {
                 if (isHost == true) {
                     Log.d(MainActivity.TAG, "wifidirectdemo: server service 1")
-                    val serverSocket = ServerSocket(port ?: 0)
+                    val serverSocket = ServerSocket(8898)
                     serverSocket.reuseAddress = true
 
                     val cr = context.contentResolver
