@@ -133,8 +133,8 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
             val server = ServerClass(requireActivity())
             server.start()
         } else if (info.groupFormed && !info.isGroupOwner) {
-//            val client = ClientClass(requireActivity(), info.groupOwnerAddress)
-//            client.start()
+            val client = ClientClass(requireActivity(), info.groupOwnerAddress)
+            client.start()
         }
         mContentView?.let {
             it.findViewById<View>(R.id.btn_start_client).visibility =
@@ -178,9 +178,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
         override fun run() {
             try {
-                serverSocket = ServerSocket()
-                serverSocket.reuseAddress = true
-                serverSocket.bind(InetSocketAddress(8988))
+                serverSocket = ServerSocket(8988)
                 val socket = serverSocket.accept()
 
                 val inputstream = socket.getInputStream()
@@ -225,7 +223,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
             try {
                 socket.bind(null)
-                socket.connect(InetSocketAddress(hostAdd, 8988), 500)
+                socket.connect(InetSocketAddress(hostAdd, 8898), 500)
                 Log.d(MainActivity.TAG, "client  socket")
 
                 val inputstream = socket.getInputStream()

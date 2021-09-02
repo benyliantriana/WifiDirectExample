@@ -3,9 +3,10 @@ package com.example.wifidirectexample
 import android.app.IntentService
 import android.content.Intent
 import android.net.Uri
-import android.os.Environment
 import android.util.Log
-import java.io.*
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -24,28 +25,30 @@ class FileTransferService : IntentService {
             val socket = Socket()
             try {
                 if (isHost == true) {
+                    Log.d(MainActivity.TAG, "wifidirectdemo: server service 1")
                     val serverSocket = ServerSocket(port ?: 0)
                     serverSocket.reuseAddress = true
+
+                    val cr = context.contentResolver
+
                     val clientSocket = serverSocket.accept()
 
-                    val inputstream = clientSocket.getInputStream()
+                    val stream = clientSocket.getOutputStream()
 
-                    val f = File(
-                        context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-                        "file-" + System.currentTimeMillis()
-                                + ".zip"
-                    )
-                    val dirs = File(f.parent)
-                    if (!dirs.exists()) dirs.mkdirs()
-                    f.createNewFile()
-                    Log.d(
-                        MainActivity.TAG,
-                        "server_service: copying files $f"
-                    )
+                    Log.d(MainActivity.TAG, "wifidirectdemo: server service 2")
 
-                    DeviceDetailFragment.copyFile(inputstream, FileOutputStream(f))
-                    Log.d(MainActivity.TAG, "file saved $f")
-                    serverSocket.close()
+                    var inputStream: InputStream? = null
+                    try {
+                        inputStream = cr.openInputStream(Uri.parse(fileUri))
+                    } catch (e: FileNotFoundException) {
+                        Log.d(MainActivity.TAG, e.toString())
+                    }
+
+                    inputStream?.let {
+                        Log.d(MainActivity.TAG, "inputStreamServert: ${it.available()}")
+                        DeviceDetailFragment.copyFile(it, stream)
+                    }
+                    Log.d(MainActivity.TAG, "Server: Data written")
                 } else {
                     Log.d(MainActivity.TAG, "Opening client socket - ")
                     socket.bind(null)
@@ -60,6 +63,7 @@ class FileTransferService : IntentService {
                         Log.d(MainActivity.TAG, e.toString())
                     }
                     inputStream?.let {
+                        Log.d(MainActivity.TAG, "inputStreamClient: ${inputStream.available()}")
                         DeviceDetailFragment.copyFile(it, stream)
                     }
                     Log.d(MainActivity.TAG, "Client: Data written")
