@@ -21,16 +21,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import java.io.*
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.ServerSocket
-import java.net.Socket
 
 class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var mContentView: View? = null
     private var device: WifiP2pDevice? = null
     private var info: WifiP2pInfo? = null
     var progressDialog: ProgressDialog? = null
+    var serverSocket: ServerSocket? = null
 
     @SuppressLint("InflateParams")
     override fun onCreateView(
@@ -96,16 +94,23 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     }
 
     private fun handlingUriFile(uri: Uri?) {
+        val localIP: String? = Utils.localIPAddress()
+
+        val address = if (localIP.equals(IP_SERVER)) {
+            "192.168.49.161" // todo
+        } else {
+            IP_SERVER
+        }
+
         val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
         serviceIntent.apply {
             action = FileTransferService.ACTION_SEND_FILE
             putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
             putExtra(
                 FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
-                info?.groupOwnerAddress?.hostAddress
+                address
             )
             putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
-            putExtra(FileTransferService.EXTRAS_IS_GROUP_OWNER, info?.isGroupOwner)
         }
         requireActivity().startService(serviceIntent)
     }
@@ -129,13 +134,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
-        if (info.groupFormed && info.isGroupOwner) {
-            val server = ServerClass(requireActivity())
-            server.start()
-        } else if (info.groupFormed && !info.isGroupOwner) {
-            val client = ClientClass(requireActivity(), info.groupOwnerAddress)
-            client.start()
-        }
+        val server = ServerClass(requireActivity(), info)
+        server.start()
+
         mContentView?.let {
             it.findViewById<View>(R.id.btn_start_client).visibility =
                 View.VISIBLE
@@ -172,16 +173,16 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     }
 
     class ServerClass(
-        private val activity: Activity
+        private val activity: Activity,
+        private var info: WifiP2pInfo? = null
     ) : Thread() {
+
         lateinit var serverSocket: ServerSocket
 
         override fun run() {
             try {
                 serverSocket = ServerSocket(8988)
                 val socket = serverSocket.accept()
-
-                val inputstream = socket.getInputStream()
 
                 val f = File(
                     activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
@@ -195,7 +196,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     MainActivity.TAG,
                     "server: copying files $f"
                 )
-
+                val inputstream = socket.getInputStream()
                 copyFile(inputstream, FileOutputStream(f))
                 Log.d(MainActivity.TAG, "file saved $f")
                 activity.runOnUiThread {
@@ -210,54 +211,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         }
     }
 
-    class ClientClass(
-        private val activity: Activity,
-        private val hostAddress: InetAddress
-    ) : Thread() {
-        lateinit var socket: Socket
-        lateinit var hostAdd: String
-
-        override fun run() {
-            hostAdd = hostAddress.hostAddress
-            socket = Socket()
-
-            try {
-                socket.bind(null)
-                socket.connect(InetSocketAddress(hostAdd, 8898), 500)
-                Log.d(MainActivity.TAG, "client  socket")
-
-                val inputstream = socket.getInputStream()
-
-                val f = File(
-                    activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-                    "file-" + System.currentTimeMillis()
-                            + ".zip"
-                )
-                val dirs = File(f.parent)
-                if (!dirs.exists()) dirs.mkdirs()
-                f.createNewFile()
-                Log.d(
-                    MainActivity.TAG,
-                    "server: copying files $f"
-                )
-
-                copyFile(inputstream, FileOutputStream(f))
-                Log.d(MainActivity.TAG, "file saved $f")
-                activity.runOnUiThread {
-                    run {
-                        Toast.makeText(activity, "File copied to $f", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                socket.close()
-            } catch (e: Exception) {
-                Log.d(MainActivity.TAG, "exxx: " + e.message.toString())
-                e.printStackTrace()
-            }
-        }
-    }
-
     companion object {
         private const val CHOOSE_FILE_RESULT_CODE = 20
+        private const val IP_SERVER: String = "192.168.49.1"
         fun copyFile(inputStream: InputStream, out: OutputStream): Boolean {
             val buf = ByteArray(1024)
             var len: Int

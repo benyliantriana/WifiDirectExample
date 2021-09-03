@@ -8,7 +8,6 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
 import java.net.InetSocketAddress
-import java.net.ServerSocket
 import java.net.Socket
 
 class FileTransferService : IntentService {
@@ -21,53 +20,25 @@ class FileTransferService : IntentService {
             val fileUri = intent.extras?.getString(EXTRAS_FILE_PATH)
             val host = intent.extras?.getString(EXTRAS_GROUP_OWNER_ADDRESS)
             val port = intent.extras?.getInt(EXTRAS_GROUP_OWNER_PORT)
-            val isHost = intent.extras?.getBoolean(EXTRAS_IS_GROUP_OWNER)
             val socket = Socket()
             try {
-                if (isHost == true) {
-                    Log.d(MainActivity.TAG, "wifidirectdemo: server service 1")
-                    val serverSocket = ServerSocket(8898)
-                    serverSocket.reuseAddress = true
-
-                    val cr = context.contentResolver
-
-                    val clientSocket = serverSocket.accept()
-
-                    val stream = clientSocket.getOutputStream()
-
-                    Log.d(MainActivity.TAG, "wifidirectdemo: server service 2")
-
-                    var inputStream: InputStream? = null
-                    try {
-                        inputStream = cr.openInputStream(Uri.parse(fileUri))
-                    } catch (e: FileNotFoundException) {
-                        Log.d(MainActivity.TAG, e.toString())
-                    }
-
-                    inputStream?.let {
-                        Log.d(MainActivity.TAG, "inputStreamServert: ${it.available()}")
-                        DeviceDetailFragment.copyFile(it, stream)
-                    }
-                    Log.d(MainActivity.TAG, "Server: Data written")
-                } else {
-                    Log.d(MainActivity.TAG, "Opening client socket - ")
-                    socket.bind(null)
-                    socket.connect(InetSocketAddress(host, port ?: 0), SOCKET_TIMEOUT)
-                    Log.d(MainActivity.TAG, "Client socket - " + socket.isConnected)
-                    val stream = socket.getOutputStream()
-                    val cr = context.contentResolver
-                    var inputStream: InputStream? = null
-                    try {
-                        inputStream = cr.openInputStream(Uri.parse(fileUri))
-                    } catch (e: FileNotFoundException) {
-                        Log.d(MainActivity.TAG, e.toString())
-                    }
-                    inputStream?.let {
-                        Log.d(MainActivity.TAG, "inputStreamClient: ${inputStream.available()}")
-                        DeviceDetailFragment.copyFile(it, stream)
-                    }
-                    Log.d(MainActivity.TAG, "Client: Data written")
+                Log.d(MainActivity.TAG, "Opening client socket - ")
+                socket.bind(null)
+                socket.connect(InetSocketAddress(host, port ?: 0), SOCKET_TIMEOUT)
+                Log.d(MainActivity.TAG, "Client socket - " + socket.isConnected)
+                val stream = socket.getOutputStream()
+                val cr = context.contentResolver
+                var inputStream: InputStream? = null
+                try {
+                    inputStream = cr.openInputStream(Uri.parse(fileUri))
+                } catch (e: FileNotFoundException) {
+                    Log.d(MainActivity.TAG, e.toString())
                 }
+                inputStream?.let {
+                    Log.d(MainActivity.TAG, "inputStreamClient: ${inputStream.available()}")
+                    DeviceDetailFragment.copyFile(it, stream)
+                }
+                Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
                 Log.e(MainActivity.TAG, e.message.toString())
             } finally {
