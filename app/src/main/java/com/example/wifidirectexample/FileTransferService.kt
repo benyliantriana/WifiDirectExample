@@ -59,6 +59,5 @@ class FileTransferService : IntentService {
         const val EXTRAS_FILE_PATH = "file_url"
         const val EXTRAS_GROUP_OWNER_ADDRESS = "go_host"
         const val EXTRAS_GROUP_OWNER_PORT = "go_port"
-        const val EXTRAS_IS_GROUP_OWNER = "go_is_group_owner"
     }
 }

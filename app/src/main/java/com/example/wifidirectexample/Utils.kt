@@ -23,7 +23,7 @@ object Utils {
             )
 
             if (i.toString() != myIPArray[3]) {
-                if (currentPingAddr.isReachable(50)) {
+                if (currentPingAddr.isReachable(10)) {
                     clientIP = tempIP
                 }
             }

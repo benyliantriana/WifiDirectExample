@@ -30,10 +30,15 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var device: WifiP2pDevice? = null
     private var info: WifiP2pInfo? = null
     var progressDialog: ProgressDialog? = null
-    var serverSocket: ServerSocket? = null
+    var localIP: String? = null
+    var clientIP: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        allowThreadPolicy()
+    }
+
+    private fun allowThreadPolicy() {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
     }
@@ -102,27 +107,31 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     }
 
     private fun handlingUriFile(uri: Uri?) {
-        val localIP: String? = Utils.localIPAddress()
-
         val address: String? = if (localIP.equals(IP_SERVER)) {
-            Utils.getConnectedDevices(localIP)
+            clientIP
         } else {
             IP_SERVER
         }
 
         if (address != null) {
-            val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
-            serviceIntent.apply {
-                action = FileTransferService.ACTION_SEND_FILE
-                putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
-                putExtra(
-                    FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
-                    address
-                )
-                putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
-            }
-            requireActivity().startService(serviceIntent)
+            sendingFiles(uri, address)
+        } else {
+            Log.d(MainActivity.TAG, "address is null")
         }
+    }
+
+    private fun sendingFiles(uri: Uri?, address: String) {
+        val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
+        serviceIntent.apply {
+            action = FileTransferService.ACTION_SEND_FILE
+            putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString())
+            putExtra(
+                FileTransferService.EXTRAS_GROUP_OWNER_ADDRESS,
+                address
+            )
+            putExtra(FileTransferService.EXTRAS_GROUP_OWNER_PORT, 8988)
+        }
+        requireActivity().startService(serviceIntent)
     }
 
     @SuppressLint("SetTextI18n")
@@ -144,7 +153,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
-        val server = ServerClass(requireActivity(), info)
+        localIP = Utils.localIPAddress()
+        clientIP = Utils.getConnectedDevices(localIP)
+        val server = ServerClass(requireActivity(), localIP)
         server.start()
 
         mContentView?.let {
@@ -184,24 +195,15 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
     class ServerClass(
         private val activity: Activity,
-        private var info: WifiP2pInfo? = null
+        private var localIP: String? = null
     ) : Thread() {
 
         lateinit var serverSocket: ServerSocket
 
         override fun run() {
             try {
-                val localIP = Utils.localIPAddress()
-                Log.d(
-                    MainActivity.TAG,
-                    "local ip server class: $localIP"
-                )
                 serverSocket = ServerSocket(8988)
                 val socket = serverSocket.accept()
-                Log.d(
-                    MainActivity.TAG,
-                    "init socket"
-                )
 
                 val f = File(
                     activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
@@ -213,7 +215,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 f.createNewFile()
                 Log.d(
                     MainActivity.TAG,
-                    "server: copying files $f"
+                    "copying files $f"
                 )
                 val inputstream = socket.getInputStream()
                 copyFile(inputstream, FileOutputStream(f))
@@ -223,14 +225,6 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                         Toast.makeText(activity, "File copied to $f", Toast.LENGTH_SHORT).show()
                     }
                 }
-                Log.d(
-                    MainActivity.TAG,
-                    "server ip: ${socket.localAddress}"
-                )
-                Log.d(
-                    MainActivity.TAG,
-                    "client ip: ${socket.remoteSocketAddress}"
-                )
                 serverSocket.close()
             } catch (e: Exception) {
                 e.printStackTrace()
