@@ -21,6 +21,10 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.*
 import java.net.ServerSocket
 
@@ -103,7 +107,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         val statusText = mContentView?.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
 
-        handlingUriFile(uri)
+        if (uri != null) {
+            handlingUriFile(uri)
+        }
     }
 
     private fun handlingUriFile(uri: Uri?) {
@@ -153,8 +159,9 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
-        localIP = Utils.localIPAddress()
-        clientIP = Utils.getConnectedDevices(localIP)
+        GlobalScope.launch(Dispatchers.Default) {
+            initiateIpAddress()
+        }
         val server = ServerClass(requireActivity(), localIP)
         server.start()
 
@@ -165,6 +172,13 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 resources
                     .getString(R.string.client_text)
             it.findViewById<View>(R.id.btn_connect).visibility = View.GONE
+        }
+    }
+
+    private suspend fun initiateIpAddress() {
+        withContext(Dispatchers.Default) {
+            localIP = Utils.localIPAddress()
+            clientIP = Utils.getConnectedDevices(localIP)
         }
     }
 
