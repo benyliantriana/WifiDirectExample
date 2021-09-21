@@ -1,4 +1,4 @@
 # WifiDirectExample
-Send files using wifi direct
+Send files using wifi direct based on google repository code
 
-Send file zip using wifi direct, need time to checking all the possible IPs for transferring data from server to client
+Send file zip using wifi direct
