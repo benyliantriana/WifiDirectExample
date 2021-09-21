@@ -21,12 +21,10 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.*
+import java.net.InetSocketAddress
 import java.net.ServerSocket
+import java.net.Socket
 
 
 class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
@@ -159,10 +157,13 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view = mContentView?.findViewById<View>(R.id.device_info) as TextView
         view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
 
-        GlobalScope.launch(Dispatchers.Default) {
+        if (info.isGroupOwner) {
             initiateIpAddress()
+            settingTempServerSocket()
+        } else {
+            settingTempClientSocket()
         }
-        val server = ServerClass(requireActivity(), localIP)
+        val server = ServerClass(requireActivity())
         server.start()
 
         mContentView?.let {
@@ -175,11 +176,30 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         }
     }
 
-    private suspend fun initiateIpAddress() {
-        withContext(Dispatchers.Default) {
-            localIP = Utils.localIPAddress()
-            clientIP = Utils.getConnectedDevices(localIP)
+    private fun settingTempServerSocket() {
+        val serverSocket = ServerSocket()
+        serverSocket.reuseAddress = true
+        serverSocket.bind(InetSocketAddress(8888))
+
+        val socket = serverSocket.accept()
+        clientIP = socket.inetAddress.hostAddress
+
+        socket.close()
+        serverSocket.close()
+    }
+
+    private fun settingTempClientSocket() {
+        val socket = Socket()
+        socket.apply {
+            reuseAddress = true
+            bind(null)
+            connect(InetSocketAddress(IP_SERVER, 8888), 500)
+            close()
         }
+    }
+
+    private fun initiateIpAddress() {
+        localIP = Utils.localIPAddress()
     }
 
     fun showDetails(device: WifiP2pDevice) {
@@ -208,17 +228,16 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     }
 
     class ServerClass(
-        private val activity: Activity,
-        private var localIP: String? = null
+        private val activity: Activity
     ) : Thread() {
 
         lateinit var serverSocket: ServerSocket
 
         override fun run() {
             try {
-                serverSocket = ServerSocket(8988)
+                serverSocket = ServerSocket()
+                serverSocket.bind(InetSocketAddress(8988))
                 val socket = serverSocket.accept()
-
                 val f = File(
                     activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
                     "file-" + System.currentTimeMillis()
